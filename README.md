@@ -1,12 +1,13 @@
 # Avana Artha Tax Consultant SIA
 
 Static frontend on GitHub Pages with Supabase authentication and database access.
+Static assignment demo on GitHub Pages. No login is required; all records are fictional and saved only in each visitor's browser.
 
 ## One-time setup
+## Demo behavior
 
-1. In the Supabase SQL Editor, run `backend/supabase-auth-rls.sql`. This blocks anonymous access to the accounting tables and permits authenticated users.
-2. In Supabase Authentication, create the staff user accounts. The website intentionally has no public sign-up form.
-3. In Supabase Authentication URL Configuration, set the Site URL and an allowed redirect URL to `https://nando-cyber707.github.io/Fernando-Edo-Savero/`.
-4. In the GitHub repository settings, open Pages and set the build/deployment source to GitHub Actions.
+- Client, invoice, expense, journal, payment, and PDF features use fictional sample data.
+- Changes are stored in local storage for the current browser only; visitors do not share or modify one another's records.
+- The real Supabase tables remain protected by `backend/supabase-auth-rls.sql` and are not accessed by the public demo.
 
 The workflow publishes the `frontend` directory after each push to `main`. The site URL is `https://nando-cyber707.github.io/Fernando-Edo-Savero/`.
