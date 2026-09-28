@@ -2,12 +2,14 @@
 
 Static frontend on GitHub Pages with Supabase authentication and database access.
 Static assignment demo on GitHub Pages. No login is required; all records are fictional and saved only in each visitor's browser.
+Public Supabase-backed web app on GitHub Pages. No login is required; visitors share the same database.
 
 ## One-time setup
 ## Demo behavior
+## Public access
 
-- Client, invoice, expense, journal, payment, and PDF features use fictional sample data.
-- Changes are stored in local storage for the current browser only; visitors do not share or modify one another's records.
-- The real Supabase tables remain protected by `backend/supabase-auth-rls.sql` and are not accessed by the public demo.
+- Any visitor can read, create, or update clients, invoices, expenses, and journals. Deletion is not granted to anonymous visitors.
+- The database is shared by everyone. Do not use this configuration for confidential or production accounting records.
+- Run `backend/supabase-auth-rls.sql` in the Supabase SQL Editor to apply these public permissions.
 
 The workflow publishes the `frontend` directory after each push to `main`. The site URL is `https://nando-cyber707.github.io/Fernando-Edo-Savero/`.

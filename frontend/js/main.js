@@ -1,73 +1,19 @@
-const DEMO_STORAGE_KEY = 'avana-artha-public-demo-v1';
-const DEMO_COA = {
-    '1101': 'Kas & Bank',
-    '1102': 'Piutang Jasa Konsultasi',
-    '1103': 'Uang Muka PPh 23 (Dibayar di Muka)',
-    '2101': 'Utang PPN / PPN Keluaran',
-    '3101': 'Modal Avana Artha',
-    '4101': 'Pendapatan Jasa Konsultasi Pajak',
-    '5101': 'Beban Gaji & Honor Konsultan',
-    '5102': 'Beban Operasional & Akomodasi Proyek'
-};
-const DEMO_SEED = {
-    clients: [
-        { id: 1, name: 'PT Contoh Nusantara', npwp: 'DEMO-NPWP-001', email: 'finance@contoh.example' },
-        { id: 2, name: 'CV Karya Bersama', npwp: 'DEMO-NPWP-002', email: 'admin@karya.example' }
-    ],
-    invoices: [
-        { id: 1, invoice_number: 'INV/DEMO/001', client_id: 1, service_description: 'Konsultasi pajak bulanan', subtotal: 3000000, ppn_amount: 330000, pph23_amount: 60000, total_receivable: 3270000, status: 'UNPAID' },
-        { id: 2, invoice_number: 'INV/DEMO/002', client_id: 2, service_description: 'Pendampingan pelaporan pajak', subtotal: 5000000, ppn_amount: 550000, pph23_amount: 100000, total_receivable: 5450000, status: 'PAID' }
-    ],
-    expenses: [
-        { id: 1, expense_number: 'EXP/DEMO/001', description: 'Biaya operasional proyek', coa_code: '5102', amount: 450000 }
-    ],
-    journals: [
-        { id: 1, entry_date: '2026-09-01', description: 'Setoran modal awal', ref_number: 'OPEN/DEMO/001', journal_items: [
-            { coa_code: '1101', debit: 10000000, credit: 0 },
-            { coa_code: '3101', debit: 0, credit: 10000000 }
-        ] },
-        { id: 2, entry_date: '2026-09-02', description: 'Penagihan Jasa: Konsultasi pajak bulanan', ref_number: 'INV/DEMO/001', journal_items: [
-            { coa_code: '1102', debit: 3270000, credit: 0 },
-            { coa_code: '1103', debit: 60000, credit: 0 },
-            { coa_code: '4101', debit: 0, credit: 3000000 },
-            { coa_code: '2101', debit: 0, credit: 330000 }
-        ] },
-        { id: 3, entry_date: '2026-09-03', description: 'Penagihan Jasa: Pendampingan pelaporan pajak', ref_number: 'INV/DEMO/002', journal_items: [
-            { coa_code: '1102', debit: 5450000, credit: 0 },
-            { coa_code: '1103', debit: 100000, credit: 0 },
-            { coa_code: '4101', debit: 0, credit: 5000000 },
-            { coa_code: '2101', debit: 0, credit: 550000 }
-        ] },
-        { id: 4, entry_date: '2026-09-04', description: 'Pelunasan Piutang Inv #INV/DEMO/002', ref_number: 'PAY-INV/DEMO/002', journal_items: [
-            { coa_code: '1101', debit: 5450000, credit: 0 },
-            { coa_code: '1102', debit: 0, credit: 5450000 }
-        ] },
-        { id: 5, entry_date: '2026-09-05', description: 'Pengeluaran: Biaya operasional proyek', ref_number: 'EXP/DEMO/001', journal_items: [
-            { coa_code: '5102', debit: 450000, credit: 0 },
-            { coa_code: '1101', debit: 0, credit: 450000 }
-        ] }
-    ]
-};
-let demoData;
-
 document.addEventListener('DOMContentLoaded', () => {
 
-    demoData = loadDemoData();
     refreshApplicationData();
 
     // Event Handlers
     document.getElementById('form-client').addEventListener('submit', async (e) => {
         e.preventDefault();
-        demoData.clients.push({
-            id: nextId(demoData.clients),
+        const { error } = await supabaseClient.from('clients').insert({
             name: document.getElementById('client_name').value,
             npwp: document.getElementById('client_npwp').value,
             email: document.getElementById('client_email').value
         });
-        saveDemoData();
-        alert('Klien demo berhasil disimpan di browser ini.');
+        if (error) return showRequestError(error);
+        alert('Klien Berhasil Disimpan');
         document.getElementById('form-client').reset();
-        refreshApplicationData();
+        await loadInitialData();
     });
 
     document.getElementById('form-invoice').addEventListener('submit', async (e) => {
@@ -78,27 +24,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const invoiceNumber = document.getElementById('inv_number').value;
         const description = document.getElementById('inv_description').value;
 
-        demoData.invoices.push({
-            id: nextId(demoData.invoices),
+        try {
+            const { error: invoiceError } = await supabaseClient.from('invoices').insert({
                 invoice_number: invoiceNumber,
                 client_id: Number(document.getElementById('inv_client_id').value),
                 service_description: description,
                 subtotal,
                 ppn_amount: ppn,
                 pph23_amount: pph23,
-                total_receivable: subtotal + ppn - pph23,
-                status: 'UNPAID'
-        });
-        createJournalEntry(`Penagihan Jasa: ${description}`, invoiceNumber, [
-            { coa_code: '1102', debit: subtotal + ppn - pph23, credit: 0 },
-            { coa_code: '1103', debit: pph23, credit: 0 },
-            { coa_code: '4101', debit: 0, credit: subtotal },
-            { coa_code: '2101', debit: 0, credit: ppn }
-        ]);
-        saveDemoData();
-        alert('Invoice demo dan jurnal berhasil dibuat di browser ini.');
-        document.getElementById('form-invoice').reset();
-        refreshApplicationData();
+                total_receivable: subtotal + ppn - pph23
+            });
+            if (invoiceError) throw invoiceError;
+
+            await createJournalEntry(`Penagihan Jasa: ${description}`, invoiceNumber, [
+                { coa_code: '1102', debit: subtotal + ppn - pph23, credit: 0 },
+                { coa_code: '1103', debit: pph23, credit: 0 },
+                { coa_code: '4101', debit: 0, credit: subtotal },
+                { coa_code: '2101', debit: 0, credit: ppn }
+            ]);
+
+            alert('Invoice Diterbitkan & Jurnal Terintegrasi Otomatis Dibuat');
+            document.getElementById('form-invoice').reset();
+            await refreshApplicationData();
+        } catch (error) {
+            showRequestError(error);
+        }
     });
 
     document.getElementById('form-expense').addEventListener('submit', async (e) => {
@@ -108,15 +58,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('exp_description').value;
         const coaCode = document.getElementById('exp_coa_code').value;
 
-        demoData.expenses.push({ id: nextId(demoData.expenses), expense_number: expenseNumber, coa_code: coaCode, description, amount });
-        createJournalEntry(`Pengeluaran: ${description}`, expenseNumber, [
-            { coa_code: coaCode, debit: amount, credit: 0 },
-            { coa_code: '1101', debit: 0, credit: amount }
-        ]);
-        saveDemoData();
-        alert('Beban demo dan jurnal berhasil dibuat di browser ini.');
-        document.getElementById('form-expense').reset();
-        refreshApplicationData();
+        try {
+            const { error: expenseError } = await supabaseClient.from('expenses').insert({
+                expense_number: expenseNumber,
+                coa_code: coaCode,
+                description,
+                amount
+            });
+            if (expenseError) throw expenseError;
+
+            await createJournalEntry(`Pengeluaran: ${description}`, expenseNumber, [
+                { coa_code: coaCode, debit: amount, credit: 0 },
+                { coa_code: '1101', debit: 0, credit: amount }
+            ]);
+
+            alert('Beban Berhasil Dicatat');
+            document.getElementById('form-expense').reset();
+            await refreshApplicationData();
+        } catch (error) {
+            showRequestError(error);
+        }
     });
 });
 
@@ -144,34 +105,19 @@ function switchTab(tab) {
 
 // Data Loaders
 async function createJournalEntry(description, referenceNumber, items) {
-    demoData.journals.push({
-        id: nextId(demoData.journals),
-        entry_date: new Date().toISOString().slice(0, 10),
-        description,
-        ref_number: referenceNumber,
-        journal_items: items.map(item => ({ ...item }))
-    });
+    const { data: entry, error: entryError } = await supabaseClient
+        .from('journal_entries')
+        .insert({ description, ref_number: referenceNumber })
+        .select('id')
+        .single();
+    if (entryError) throw entryError;
+
+    const journalItems = items.map(item => ({ ...item, journal_id: entry.id }));
+    const { error: itemsError } = await supabaseClient.from('journal_items').insert(journalItems);
+    if (itemsError) throw itemsError;
 }
 
-function loadDemoData() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(DEMO_STORAGE_KEY));
-        if (saved && saved.clients && saved.invoices && saved.expenses && saved.journals) return saved;
-    } catch (error) {
-        console.warn('Data demo lokal tidak dapat dibaca:', error);
-    }
-    return JSON.parse(JSON.stringify(DEMO_SEED));
-}
-
-function saveDemoData() {
-    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoData));
-}
-
-function nextId(records) {
-    return records.reduce((largest, record) => Math.max(largest, Number(record.id) || 0), 0) + 1;
-}
-
-function refreshApplicationData() {
+async function refreshApplicationData() {
     loadDashboardData();
     loadInitialData();
     loadInvoices();
@@ -287,12 +233,19 @@ async function downloadReportPdf(reportType) {
 
 // Data Loaders
 async function loadDashboardData() {
+    const { data: journals, error } = await supabaseClient
+        .from('journal_items')
+        .select('coa_code, debit, credit');
+    if (error) throw error;
+
     const totals = { revenue: 0, expense: 0, receivable: 0, cash: 0 };
-    demoData.journals.flatMap(entry => entry.journal_items).forEach(item => {
-        if (item.coa_code === '4101') totals.revenue += Number(item.credit) - Number(item.debit);
-        if (item.coa_code.startsWith('5')) totals.expense += Number(item.debit) - Number(item.credit);
-        if (item.coa_code === '1102') totals.receivable += Number(item.debit) - Number(item.credit);
-        if (item.coa_code === '1101') totals.cash += Number(item.debit) - Number(item.credit);
+    journals.forEach(item => {
+        const debit = Number(item.debit) || 0;
+        const credit = Number(item.credit) || 0;
+        if (item.coa_code === '4101') totals.revenue += credit - debit;
+        if (item.coa_code.startsWith('5')) totals.expense += debit - credit;
+        if (item.coa_code === '1102') totals.receivable += debit - credit;
+        if (item.coa_code === '1101') totals.cash += debit - credit;
     });
 
     document.getElementById('stat-cash').innerText = `Rp ${totals.cash.toLocaleString('id-ID')}`;
@@ -302,22 +255,27 @@ async function loadDashboardData() {
 }
 
 async function loadInitialData() {
+    const { data: clients, error } = await supabaseClient.from('clients').select('*').order('name');
+    if (error) throw error;
     const select = document.getElementById('inv_client_id');
-    select.replaceChildren(new Option('-- Pilih Klien --', ''));
-    demoData.clients.slice().sort((first, second) => first.name.localeCompare(second.name, 'id'))
-        .forEach(client => select.add(new Option(client.name, client.id)));
+    select.innerHTML = '<option value="">-- Pilih Klien --</option>';
+    clients.forEach(client => select.add(new Option(client.name, client.id)));
 }
 
-function loadInvoices() {
+async function loadInvoices() {
+    const { data: invoices, error } = await supabaseClient
+        .from('invoices')
+        .select('*, clients(name)')
+        .order('id', { ascending: false });
+    if (error) throw error;
     const tbody = document.getElementById('invoice-table-body');
     tbody.innerHTML = '';
 
-    demoData.invoices.slice().sort((first, second) => second.id - first.id).forEach(inv => {
-        const client = demoData.clients.find(item => item.id === Number(inv.client_id));
+    invoices.forEach(inv => {
         tbody.innerHTML += `
             <tr class="border-b text-xs">
                 <td class="p-3 font-semibold">${escapeHtml(inv.invoice_number)}</td>
-                <td class="p-3">${escapeHtml(client ? client.name : '-')}</td>
+                <td class="p-3">${escapeHtml(inv.clients ? inv.clients.name : '-')}</td>
                 <td class="p-3">Rp ${Number(inv.subtotal).toLocaleString('id-ID')}</td>
                 <td class="p-3">Rp ${Number(inv.ppn_amount).toLocaleString('id-ID')}</td>
                 <td class="p-3 text-rose-600">Rp ${Number(inv.pph23_amount).toLocaleString('id-ID')}</td>
@@ -337,28 +295,49 @@ function loadInvoices() {
 
 function payInvoice(id) {
     if (!confirm('Proses pelunasan tagihan ini? (Otomatis menambah Kas & Mengurangi Piutang)')) return;
-    const invoice = demoData.invoices.find(item => item.id === Number(id));
-    if (!invoice || invoice.status === 'PAID') return;
-    invoice.status = 'PAID';
-    createJournalEntry(`Pelunasan Piutang Inv #${escapeHtml(invoice.invoice_number)}`, `PAY-${invoice.invoice_number}`, [
+    (async () => {
+        const { data: invoice, error: invoiceError } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (invoiceError) return showRequestError(invoiceError);
+        if (invoice.status === 'PAID') return;
+
+        const { error: updateError } = await supabaseClient
+            .from('invoices')
+            .update({ status: 'PAID' })
+            .eq('id', id);
+        if (updateError) return showRequestError(updateError);
+
+        try {
+            await createJournalEntry(`Pelunasan Piutang Inv #${invoice.invoice_number}`, `PAY-${invoice.invoice_number}`, [
             { coa_code: '1101', debit: invoice.total_receivable, credit: 0 },
             { coa_code: '1102', debit: 0, credit: invoice.total_receivable }
-        ]);
-    saveDemoData();
-    refreshApplicationData();
+            ]);
+            await refreshApplicationData();
+        } catch (error) {
+            showRequestError(error);
+        }
+    })();
 }
 
-function loadJournals() {
+async function loadJournals() {
+    const { data: journals, error } = await supabaseClient
+        .from('journal_entries')
+        .select('*, journal_items(*, coa(name))')
+        .order('id', { ascending: false });
+    if (error) throw error;
     const tbody = document.getElementById('journal-table-body');
     tbody.innerHTML = '';
 
-    demoData.journals.slice().sort((first, second) => second.id - first.id).forEach(entry => {
+    journals.forEach(entry => {
         entry.journal_items.forEach((item, index) => {
             tbody.innerHTML += `
                 <tr class="${index === 0 ? 'border-t bg-slate-50' : 'border-b'} text-xs">
                     <td class="p-2.5 border">${index === 0 ? entry.entry_date : ''}</td>
                     <td class="p-2.5 border font-semibold">${index === 0 ? `${escapeHtml(entry.description)} (${escapeHtml(entry.ref_number)})` : ''}</td>
-                    <td class="p-2.5 border ${item.credit > 0 ? 'pl-8 text-slate-600' : 'font-medium'}">${item.coa_code} - ${DEMO_COA[item.coa_code] || 'Akun Demo'}</td>
+                    <td class="p-2.5 border ${item.credit > 0 ? 'pl-8 text-slate-600' : 'font-medium'}">${item.coa_code} - ${escapeHtml(item.coa.name)}</td>
                     <td class="p-2.5 border text-right">${item.debit > 0 ? `Rp ${Number(item.debit).toLocaleString('id-ID')}` : '-'}</td>
                     <td class="p-2.5 border text-right">${item.credit > 0 ? `Rp ${Number(item.credit).toLocaleString('id-ID')}` : '-'}</td>
                 </tr>
