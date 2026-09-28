@@ -12,7 +12,27 @@
 </head>
 <body class="bg-slate-50 font-sans text-slate-800">
 
-    <div class="flex h-screen overflow-hidden">
+    <main id="auth-screen" class="flex min-h-screen items-center justify-center p-6">
+        <section class="w-full max-w-sm rounded border border-slate-200 bg-white p-8 shadow-sm">
+            <div class="mb-6 border-b-2 border-emerald-600 pb-4">
+                <h1 class="text-xl font-bold tracking-wide text-slate-900">AVANA ARTHA</h1>
+                <p class="mt-1 text-xs font-semibold text-emerald-700">TAX CONSULTANT</p>
+            </div>
+            <h2 class="mb-5 text-lg font-bold text-slate-800">Masuk ke Sistem</h2>
+            <form id="login-form" class="space-y-4">
+                <label class="block text-sm font-medium text-slate-700" for="login-email">Email
+                    <input id="login-email" type="email" autocomplete="username" required class="mt-1 w-full rounded border border-slate-300 p-2.5 text-sm">
+                </label>
+                <label class="block text-sm font-medium text-slate-700" for="login-password">Password
+                    <input id="login-password" type="password" autocomplete="current-password" required class="mt-1 w-full rounded border border-slate-300 p-2.5 text-sm">
+                </label>
+                <p id="auth-error" class="hidden text-sm text-rose-700" role="alert"></p>
+                <button type="submit" class="w-full rounded bg-emerald-700 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Masuk</button>
+            </form>
+        </section>
+    </main>
+
+    <div id="app-shell" class="hidden flex h-screen overflow-hidden">
         
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between">
@@ -62,6 +82,7 @@
                 <div class="flex items-center space-x-3 text-sm">
                     <span class="inline-block w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span class="font-medium text-slate-600">Sistem Akuntansi Aktif</span>
+                    <button type="button" id="sign-out" class="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Keluar</button>
                 </div>
             </header>
 

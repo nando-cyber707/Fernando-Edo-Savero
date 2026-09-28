@@ -1,50 +1,114 @@
 document.addEventListener('DOMContentLoaded', () => {
-    loadDashboardData();
-    loadInitialData();
-    loadInvoices();
-    loadJournals();
+    const authScreen = document.getElementById('auth-screen');
+    const appShell = document.getElementById('app-shell');
+    const authError = document.getElementById('auth-error');
+    let appInitialized = false;
+
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        authError.classList.add('hidden');
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email: document.getElementById('login-email').value,
+            password: document.getElementById('login-password').value
+        });
+        if (error) {
+            authError.textContent = 'Email atau password tidak valid.';
+            authError.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('sign-out').addEventListener('click', async () => {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) showRequestError(error);
+    });
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+        const isAuthenticated = Boolean(session);
+        authScreen.classList.toggle('hidden', isAuthenticated);
+        appShell.classList.toggle('hidden', !isAuthenticated);
+        if (isAuthenticated && !appInitialized) {
+            appInitialized = true;
+            refreshApplicationData();
+        } else if (!isAuthenticated) {
+            appInitialized = false;
+        }
+    });
 
     // Event Handlers
     document.getElementById('form-client').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const body = {
+        const { error } = await supabaseClient.from('clients').insert({
             name: document.getElementById('client_name').value,
             npwp: document.getElementById('client_npwp').value,
             email: document.getElementById('client_email').value
-        };
-        const res = await fetch(`${API_BASE_URL}/clients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (res.ok) { alert('Klien Berhasil Disimpan'); document.getElementById('form-client').reset(); loadInitialData(); }
+        });
+        if (error) return showRequestError(error);
+        alert('Klien Berhasil Disimpan');
+        document.getElementById('form-client').reset();
+        loadInitialData();
     });
 
     document.getElementById('form-invoice').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const body = {
-            invoice_number: document.getElementById('inv_number').value,
-            client_id: document.getElementById('inv_client_id').value,
-            service_description: document.getElementById('inv_description').value,
-            subtotal: document.getElementById('inv_subtotal').value
-        };
-        const res = await fetch(`${API_BASE_URL}/invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (res.ok) {
+        const subtotal = Number(document.getElementById('inv_subtotal').value);
+        const ppn = subtotal * 0.11;
+        const pph23 = subtotal * 0.02;
+        const invoiceNumber = document.getElementById('inv_number').value;
+        const description = document.getElementById('inv_description').value;
+
+        try {
+            const { error: invoiceError } = await supabaseClient.from('invoices').insert({
+                invoice_number: invoiceNumber,
+                client_id: document.getElementById('inv_client_id').value,
+                service_description: description,
+                subtotal,
+                ppn_amount: ppn,
+                pph23_amount: pph23,
+                total_receivable: subtotal + ppn - pph23
+            });
+            if (invoiceError) throw invoiceError;
+
+            await createJournalEntry(`Penagihan Jasa: ${description}`, invoiceNumber, [
+                { coa_code: '1102', debit: subtotal + ppn - pph23, credit: 0 },
+                { coa_code: '1103', debit: pph23, credit: 0 },
+                { coa_code: '4101', debit: 0, credit: subtotal },
+                { coa_code: '2101', debit: 0, credit: ppn }
+            ]);
+
             alert('Invoice Diterbitkan & Jurnal Terintegrasi Otomatis Dibuat');
             document.getElementById('form-invoice').reset();
-            loadInvoices(); loadJournals(); loadDashboardData();
+            await refreshApplicationData();
+        } catch (error) {
+            showRequestError(error);
         }
     });
 
     document.getElementById('form-expense').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const body = {
-            expense_number: document.getElementById('exp_number').value,
-            coa_code: document.getElementById('exp_coa_code').value,
-            description: document.getElementById('exp_description').value,
-            amount: document.getElementById('exp_amount').value
-        };
-        const res = await fetch(`${API_BASE_URL}/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (res.ok) {
+        const amount = Number(document.getElementById('exp_amount').value);
+        const expenseNumber = document.getElementById('exp_number').value;
+        const description = document.getElementById('exp_description').value;
+        const coaCode = document.getElementById('exp_coa_code').value;
+
+        try {
+            const { error: expenseError } = await supabaseClient.from('expenses').insert({
+                expense_number: expenseNumber,
+                coa_code: coaCode,
+                description,
+                amount
+            });
+            if (expenseError) throw expenseError;
+
+            await createJournalEntry(`Pengeluaran: ${description}`, expenseNumber, [
+                { coa_code: coaCode, debit: amount, credit: 0 },
+                { coa_code: '1101', debit: 0, credit: amount }
+            ]);
+
             alert('Beban Dicatat & Jurnal Terintegrasi Otomatis Dibuat');
             document.getElementById('form-expense').reset();
-            loadJournals(); loadDashboardData();
+            await refreshApplicationData();
+        } catch (error) {
+            showRequestError(error);
         }
     });
 });
@@ -69,6 +133,33 @@ function switchTab(tab) {
         journals: 'Buku Jurnal Umum Terintegrasi'
     };
     document.getElementById('page-title').innerText = titles[tab];
+}
+
+// Data Loaders
+async function createJournalEntry(description, referenceNumber, items) {
+    const { data: entry, error: entryError } = await supabaseClient
+        .from('journal_entries')
+        .insert({ description, ref_number: referenceNumber })
+        .select('id')
+        .single();
+    if (entryError) throw entryError;
+
+    const journalItems = items.map(item => ({ ...item, journal_id: entry.id }));
+    const { error: itemsError } = await supabaseClient.from('journal_items').insert(journalItems);
+    if (itemsError) throw itemsError;
+}
+
+async function refreshApplicationData() {
+    try {
+        await Promise.all([loadDashboardData(), loadInitialData(), loadInvoices(), loadJournals()]);
+    } catch (error) {
+        showRequestError(error);
+    }
+}
+
+function showRequestError(error) {
+    console.error('Permintaan gagal:', error);
+    alert(`Operasi gagal: ${error.message || 'Periksa koneksi dan hak akses Supabase.'}`);
 }
 
 // Data Loaders
@@ -176,25 +267,41 @@ async function downloadReportPdf(reportType) {
 
 // Data Loaders
 async function loadDashboardData() {
-    const res = await fetch(`${API_BASE_URL}/dashboard`);
-    const data = await res.json();
-    document.getElementById('stat-cash').innerText = `Rp ${Number(data.cash).toLocaleString('id-ID')}`;
-    document.getElementById('stat-revenue').innerText = `Rp ${Number(data.revenue).toLocaleString('id-ID')}`;
-    document.getElementById('stat-receivable').innerText = `Rp ${Number(data.receivable).toLocaleString('id-ID')}`;
-    document.getElementById('stat-netincome').innerText = `Rp ${Number(data.netIncome).toLocaleString('id-ID')}`;
+    const { data: journals, error } = await supabaseClient
+        .from('journal_items')
+        .select('coa_code, debit, credit');
+    if (error) throw error;
+
+    const totals = { revenue: 0, expense: 0, receivable: 0, cash: 0 };
+    journals.forEach(item => {
+        const debit = Number(item.debit) || 0;
+        const credit = Number(item.credit) || 0;
+        if (item.coa_code === '4101') totals.revenue += credit - debit;
+        if (item.coa_code.startsWith('5')) totals.expense += debit - credit;
+        if (item.coa_code === '1102') totals.receivable += debit - credit;
+        if (item.coa_code === '1101') totals.cash += debit - credit;
+    });
+
+    document.getElementById('stat-cash').innerText = `Rp ${totals.cash.toLocaleString('id-ID')}`;
+    document.getElementById('stat-revenue').innerText = `Rp ${totals.revenue.toLocaleString('id-ID')}`;
+    document.getElementById('stat-receivable').innerText = `Rp ${totals.receivable.toLocaleString('id-ID')}`;
+    document.getElementById('stat-netincome').innerText = `Rp ${(totals.revenue - totals.expense).toLocaleString('id-ID')}`;
 }
 
 async function loadInitialData() {
-    const res = await fetch(`${API_BASE_URL}/initial-data`);
-    const data = await res.json();
+    const { data: clients, error } = await supabaseClient.from('clients').select('*').order('name');
+    if (error) throw error;
     const select = document.getElementById('inv_client_id');
     select.innerHTML = '<option value="">-- Pilih Klien --</option>';
-    data.clients.forEach(c => select.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+    clients.forEach(client => select.innerHTML += `<option value="${client.id}">${client.name}</option>`);
 }
 
 async function loadInvoices() {
-    const res = await fetch(`${API_BASE_URL}/invoices`);
-    const invoices = await res.json();
+    const { data: invoices, error } = await supabaseClient
+        .from('invoices')
+        .select('*, clients(name)')
+        .order('id', { ascending: false });
+    if (error) throw error;
     const tbody = document.getElementById('invoice-table-body');
     tbody.innerHTML = '';
 
@@ -222,13 +329,37 @@ async function loadInvoices() {
 
 async function payInvoice(id) {
     if (!confirm('Proses pelunasan tagihan ini? (Otomatis menambah Kas & Mengurangi Piutang)')) return;
-    const res = await fetch(`${API_BASE_URL}/invoices/pay`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoice_id: id }) });
-    if (res.ok) { loadInvoices(); loadJournals(); loadDashboardData(); }
+    try {
+        const { data: invoice, error: invoiceError } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (invoiceError) throw invoiceError;
+        if (invoice.status === 'PAID') throw new Error('Invoice sudah lunas.');
+
+        const { error: updateError } = await supabaseClient
+            .from('invoices')
+            .update({ status: 'PAID' })
+            .eq('id', id);
+        if (updateError) throw updateError;
+
+        await createJournalEntry(`Pelunasan Piutang Inv #${invoice.invoice_number}`, `PAY-${invoice.invoice_number}`, [
+            { coa_code: '1101', debit: invoice.total_receivable, credit: 0 },
+            { coa_code: '1102', debit: 0, credit: invoice.total_receivable }
+        ]);
+        await refreshApplicationData();
+    } catch (error) {
+        showRequestError(error);
+    }
 }
 
 async function loadJournals() {
-    const res = await fetch(`${API_BASE_URL}/journals`);
-    const journals = await res.json();
+    const { data: journals, error } = await supabaseClient
+        .from('journal_entries')
+        .select('*, journal_items(*, coa(name))')
+        .order('id', { ascending: false });
+    if (error) throw error;
     const tbody = document.getElementById('journal-table-body');
     tbody.innerHTML = '';
 
