@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: avana-artha-sia
+    runtime: node
+    plan: free
+    buildCommand: npm ci --prefix backend
+    startCommand: node backend/app.js
+    healthCheckPath: /health

@@ -1,10 +1,13 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Masukkan Project URL dan Publishable Key Supabase Anda
 const SUPABASE_URL = 'https://tukxnvkkmrtfzagoryty.supabase.co';
@@ -172,5 +175,5 @@ app.get('/api/journals', async (req, res) => {
     res.json(data || []);
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SIA Avana Artha Tax Consultant running on port ${PORT}`));
