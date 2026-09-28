@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avana Artha Tax Consultant - SIA System</title>
+    <!-- Tailwind CSS CDN & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between">
+            <div>
+                <!-- Brand Header -->
+                <div class="p-5 border-b border-slate-800 flex items-center space-x-3">
+                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-lg font-bold text-xl">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-wide">AVANA ARTHA</h1>
+                        <p class="text-xs text-emerald-400 font-medium">Tax Consultant SIA</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="p-4 space-y-1 text-sm">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-emerald-600 text-white font-medium">
+                        <i class="fa-solid fa-house w-5"></i> <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('clients')" id="nav-clients" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
+                        <i class="fa-solid fa-users w-5"></i> <span>Master Klien</span>
+                    </button>
+                    <button onclick="switchTab('invoices')" id="nav-invoices" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
+                        <i class="fa-solid fa-file-invoice-dollar w-5"></i> <span>Tagihan / Invoice</span>
+                    </button>
+                    <button onclick="switchTab('expenses')" id="nav-expenses" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
+                        <i class="fa-solid fa-receipt w-5"></i> <span>Beban Operasional</span>
+                    </button>
+                    <button onclick="switchTab('journals')" id="nav-journals" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
+                        <i class="fa-solid fa-book w-5"></i> <span>Jurnal Umum</span>
+                    </button>
+                </nav>
+            </div>
+            
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                &copy; 2026 Avana Artha Tax Consultant
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            
+            <!-- Top Navbar -->
+            <header class="bg-white border-b px-8 py-4 flex justify-between items-center shadow-sm">
+                <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard Keuangan</h2>
+                <div class="flex items-center space-x-3 text-sm">
+                    <span class="inline-block w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="font-medium text-slate-600">Sistem Akuntansi Aktif</span>
+                </div>
+            </header>
+
+            <!-- Dynamic Views Container -->
+            <div class="p-8 space-y-6">
+
+                <!-- 1. DASHBOARD VIEW -->
+                <section id="view-dashboard" class="space-y-6">
+                    <!-- Key Financial Metrics Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="p-3 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-wallet text-2xl"></i></div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium">Total Kas & Bank</p>
+                                <h3 id="stat-cash" class="text-xl font-bold text-slate-800">Rp 0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="p-3 bg-emerald-100 text-emerald-600 rounded-lg"><i class="fa-solid fa-arrow-trend-up text-2xl"></i></div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium">Pendapatan Jasa</p>
+                                <h3 id="stat-revenue" class="text-xl font-bold text-slate-800">Rp 0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="p-3 bg-amber-100 text-amber-600 rounded-lg"><i class="fa-solid fa-clock-rotate-left text-2xl"></i></div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium">Total Piutang (AR)</p>
+                                <h3 id="stat-receivable" class="text-xl font-bold text-slate-800">Rp 0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="p-3 bg-rose-100 text-rose-600 rounded-lg"><i class="fa-solid fa-chart-pie text-2xl"></i></div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium">Laba Bersih</p>
+                                <h3 id="stat-netincome" class="text-xl font-bold text-slate-800">Rp 0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Company Overview Banner -->
+                    <div class="bg-slate-900 text-white rounded-xl p-6 shadow-md flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold mb-1">Avana Artha Tax Consultant SIA System</h3>
+                            <p class="text-sm text-slate-300">Pengelolaan terintegrasi otomatis dari tagihan klien, pemotongan PPh 23, PPN, hingga Jurnal & Laporan Keuangan.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. KLIEN VIEW -->
+                <section id="view-clients" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-xl border shadow-sm">
+                        <h3 class="text-base font-bold mb-4">Tambah Klien Baru</h3>
+                        <form id="form-client" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="text" id="client_name" placeholder="Nama Wajib Pajak / Perusahaan" required class="border p-2.5 text-sm rounded-lg">
+                            <input type="text" id="client_npwp" placeholder="NPWP Klien" class="border p-2.5 text-sm rounded-lg">
+                            <input type="email" id="client_email" placeholder="Email Klien" class="border p-2.5 text-sm rounded-lg">
+                            <button type="submit" class="md:col-span-3 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700">Simpan Data Klien</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 3. INVOICE VIEW -->
+                <section id="view-invoices" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-xl border shadow-sm">
+                        <h3 class="text-base font-bold mb-4">Penerbitan Invoice Jasa Konsultasi Pajak</h3>
+                        <form id="form-invoice" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="inv_number" placeholder="No Invoice (cth: INV/AA/2026/001)" required class="border p-2.5 text-sm rounded-lg">
+                            <select id="inv_client_id" required class="border p-2.5 text-sm rounded-lg">
+                                <option value="">-- Pilih Klien --</option>
+                            </select>
+                            <input type="text" id="inv_description" placeholder="Deskripsi Layanan Konsultasi" required class="md:col-span-2 border p-2.5 text-sm rounded-lg">
+                            <input type="number" id="inv_subtotal" placeholder="Nilai Jasa / Fee (Rp)" required class="md:col-span-2 border p-2.5 text-sm rounded-lg">
+                            <button type="submit" class="md:col-span-2 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700">Terbitkan Invoice & Generate Jurnal</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border shadow-sm">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <h3 class="text-base font-bold">Daftar Tagihan & Status Pelunasan</h3>
+                            <button type="button" onclick="downloadReportPdf('invoices')" class="inline-flex items-center gap-2 rounded bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+                                <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Download PDF
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-slate-100 text-slate-700">
+                                    <tr>
+                                        <th class="p-3 border-b">No Inv</th>
+                                        <th class="p-3 border-b">Klien</th>
+                                        <th class="p-3 border-b">Subtotal</th>
+                                        <th class="p-3 border-b">PPN (11%)</th>
+                                        <th class="p-3 border-b">PPh 23 (2%)</th>
+                                        <th class="p-3 border-b">Total Piutang</th>
+                                        <th class="p-3 border-b">Status</th>
+                                        <th class="p-3 border-b">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoice-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. EXPENSE VIEW -->
+                <section id="view-expenses" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-xl border shadow-sm">
+                        <h3 class="text-base font-bold mb-4">Pencatatan Beban Operasional / Proyek Konsultasi</h3>
+                        <form id="form-expense" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="exp_number" placeholder="No Pengeluaran (cth: EXP/AA/001)" required class="border p-2.5 text-sm rounded-lg">
+                            <select id="exp_coa_code" required class="border p-2.5 text-sm rounded-lg">
+                                <option value="5101">5101 - Beban Gaji & Honor Konsultan</option>
+                                <option value="5102">5102 - Beban Operasional & Akomodasi Proyek</option>
+                            </select>
+                            <input type="text" id="exp_description" placeholder="Keterangan Pengeluaran" required class="md:col-span-2 border p-2.5 text-sm rounded-lg">
+                            <input type="number" id="exp_amount" placeholder="Jumlah (Rp)" required class="md:col-span-2 border p-2.5 text-sm rounded-lg">
+                            <button type="submit" class="md:col-span-2 bg-rose-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-700">Catat Pengeluaran & Generate Jurnal</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 5. JOURNAL VIEW -->
+                <section id="view-journals" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-xl border shadow-sm">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <h3 class="text-base font-bold">Laporan Jurnal Umum Terintegrasi (Double-Entry)</h3>
+                            <button type="button" onclick="downloadReportPdf('journals')" class="inline-flex items-center gap-2 rounded bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+                                <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Download PDF
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left border border-slate-200">
+                                <thead class="bg-slate-900 text-white">
+                                    <tr>
+                                        <th class="p-3 border">Tanggal</th>
+                                        <th class="p-3 border">Keterangan / Ref</th>
+                                        <th class="p-3 border">Kode & Nama Akun</th>
+                                        <th class="p-3 border text-right">Debit (Rp)</th>
+                                        <th class="p-3 border text-right">Kredit (Rp)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="journal-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
