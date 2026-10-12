@@ -1,6 +1,7 @@
 # Avana Artha Tax Consultant SIA
 
-## Demo aplikasi : `https://nando-cyber707.github.io/Fernando-Edo-Savero/`
+## Demo Aplikasi
+- **URL Demo:** [Avana Artha Tax Consultant SIA](https://nando-cyber707.github.io/Fernando-Edo-Savero/)
 - Run `backend/supabase-auth-rls.sql` in the Supabase SQL Editor to apply these public permissions.
 
 ## Deskripsi Aplikasi
